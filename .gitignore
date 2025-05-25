@@ -1,0 +1,51 @@
+# Java build output
+/bin/
+/build/
+/out/
+*.class
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+.history/
+.settings/
+
+# Eclipse
+.project
+.classpath
+.c9/
+*.launch
+
+# Maven
+target/
+
+# Gradle
+.gradle/
+build/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Google API tokens and credentials
+tokens/
+.credentials/
+*.json
+
+# Ignore user-specific config
+*.swp
+*.swo
+
+# Ignore Jupyter/IPython
+.ipynb_checkpoints/
+
+# Ignore generated files
+*.jar
+*.war
+*.ear
