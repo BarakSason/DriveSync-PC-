@@ -37,7 +37,8 @@ public class App {
             credentialsReader
         );
 
-        File tokenFolder = new File("tokens");
+        // Store tokens in user home directory to avoid permission issues
+        File tokenFolder = new File(System.getProperty("user.home"), ".drivesync_tokens");
         if (!tokenFolder.exists()) {
             tokenFolder.mkdirs();
         }

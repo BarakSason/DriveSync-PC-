@@ -47,17 +47,50 @@ java -jar DriveSync.jar <local_folder_path> <google_drive_folder_name>
 ### 4. First Run Authentication
 
 - On first run, a browser window will open asking you to authorize the app to access your Google Drive.
-- After authorization, tokens will be saved in a `tokens` directory for future use.
+- After authorization, tokens will be saved in a `.drivesync_tokens` directory in your user home for future use.
+
+---
+
+## Running DriveSync Automatically at Startup
+
+This project includes helper scripts in the [`scripts/`](scripts/) directory to help you run DriveSync automatically when you log in to Windows:
+
+- **`start-drivesync.bat`**  
+  A batch file that launches the DriveSync application with your desired arguments.
+
+- **`launch-drivesync.vbs`**  
+  A VBScript that launches the batch file silently (without showing a Command Prompt window).
+
+### How to Use
+
+1. **Edit `start-drivesync.bat`**  
+   - Update the paths and arguments inside the script to match your setup (Java path, JAR location, local folder, and Google Drive folder name).
+
+2. **Edit `launch-drivesync.vbs`**  
+   - Make sure the path to `start-drivesync.bat` is correct.
+
+3. **Copy `launch-drivesync.vbs` to your Startup folder:**  
+   ```
+   C:\Users\<YourUsername>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+   ```
+   This will run DriveSync automatically and silently every time you log in.
+
+---
 
 ## Security Notice
 
 **Do NOT share your `credentials.json` file or commit it to any public repository.**  
 This file contains sensitive information unique to your Google Cloud project.
 
+---
+
 ## Troubleshooting
 
 - If you see a `NullPointerException` related to `credentials.json`, make sure the file is present in the correct directory.
 - If you change your Google Drive folder name, you must re-run the app with the new name.
+- If the app does not run at startup, check your log files and ensure all paths and permissions are correct.
+
+---
 
 ## License
 
