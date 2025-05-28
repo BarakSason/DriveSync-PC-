@@ -6,14 +6,22 @@ import java.util.*;
 import static java.nio.file.StandardWatchEventKinds.*;
 
 public class FolderMonitor {
+    // Path to the local folder being monitored for changes
     private final Path folderToMonitor;
-    // Tracks last modified time to debounce ENTRY_MODIFY events
+    // Tracks last modified time to debounce ENTRY_MODIFY events and avoid redundant uploads
     private final Map<Path, Long> lastUploadedModifiedTime = new HashMap<>();
 
+    /**
+     * Constructs a FolderMonitor for the specified local folder path.
+     */
     public FolderMonitor(String folderPath) {
         this.folderToMonitor = Paths.get(folderPath);
     }
 
+    /**
+     * Performs an initial sync between the local folder and the Google Drive folder.
+     * Uploads new/changed files and deletes files from Drive that were deleted locally.
+     */
     public void initialSync(GoogleDriveSync googleDriveSync) {
         System.out.println("Performing initial sync...");
 
@@ -47,10 +55,11 @@ public class FolderMonitor {
             // 2. List all files in the Drive folder and their modified times
             Map<String, Long> driveFiles = googleDriveSync.listFileNamesAndModifiedTimesInDriveFolder();
 
-            // 3. Upload new or changed files
+            // 3. Upload new or changed files from local to Drive
             for (String fileName : localFiles.keySet()) {
                 Long localTime = localModifiedTimes.get(fileName);
                 Long driveTime = driveFiles.get(fileName);
+                // Upload if file is new or has been modified locally
                 if (driveTime == null || (localTime != null && localTime > driveTime)) {
                     Path localPath = localFiles.get(fileName);
                     waitForFileReady(localPath);
@@ -79,10 +88,15 @@ public class FolderMonitor {
         }
     }
 
+    /**
+     * Starts monitoring the local folder for file changes and syncs them with Google Drive.
+     * Handles file creation, modification, and deletion events.
+     */
     public void startMonitoring(GoogleDriveSync googleDriveSync) {
         System.out.println("Monitoring folder: " + folderToMonitor);
 
         try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
+            // Register the folder for create, modify, and delete events
             folderToMonitor.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE);
             while (true) {
                 WatchKey key = watchService.take();
@@ -92,6 +106,7 @@ public class FolderMonitor {
                     Path filePath = folderToMonitor.resolve(fileName);
 
                     if (kind == ENTRY_CREATE) {
+                        // Handle new file creation
                         System.out.println("File created: " + filePath);
                         try {
                             waitForFileReady(filePath);
@@ -101,6 +116,7 @@ public class FolderMonitor {
                             System.err.println("Error uploading new file " + filePath.getFileName() + ": " + e.getMessage());
                         }
                     } else if (kind == ENTRY_MODIFY) {
+                        // Handle file modification (debounced to avoid redundant uploads)
                         try {
                             long currentModified = Files.getLastModifiedTime(filePath).toMillis();
                             Long lastUploaded = lastUploadedModifiedTime.get(filePath);
@@ -116,6 +132,7 @@ public class FolderMonitor {
                             System.err.println("Error uploading modified file " + filePath.getFileName() + ": " + e.getMessage());
                         }
                     } else if (kind == ENTRY_DELETE) {
+                        // Handle file deletion
                         System.out.println("File deleted: " + filePath);
                         try {
                             googleDriveSync.deleteFileByName(fileName.toString());
@@ -124,7 +141,7 @@ public class FolderMonitor {
                         }
                     }
                 }
-                // Reset the key to continue watching
+                // Reset the key to continue watching for events
                 if (!key.reset()) {
                     break;
                 }
@@ -134,7 +151,10 @@ public class FolderMonitor {
         }
     }
 
-    // Waits until the file is ready for reading (not locked)
+    /**
+     * Waits until the file is ready for reading (not locked by another process).
+     * Retries a few times before giving up.
+     */
     private void waitForFileReady(Path filePath) {
         int maxTries = 10;
         int tries = 0;

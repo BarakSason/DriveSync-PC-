@@ -15,34 +15,39 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.util.Collections;
 
-public class App {
+public class DriveSync {
 
     public static void main(String[] args) throws Exception {
+        // Check for required command-line arguments
         if (args.length < 2) {
             System.err.println("Usage: java -jar DriveSync.jar <local_folder_path> <google_drive_folder_name>");
             System.exit(1);
         }
 
+        // Parse command-line arguments
         String localFolderPath = args[0];
         String googleDriveFolderName = args[1];
 
+        // Initialize HTTP transport and JSON factory for Google API client
         final var HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
         final var JSON_FACTORY = GsonFactory.getDefaultInstance();
 
+        // Load OAuth 2.0 client secrets from the resource file
         InputStreamReader credentialsReader = new InputStreamReader(
-                App.class.getResourceAsStream("/credentials.json"));
+                DriveSync.class.getResourceAsStream("/credentials.json"));
 
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
             JSON_FACTORY,
             credentialsReader
         );
 
-        // Store tokens in user home directory to avoid permission issues
+        // Store OAuth tokens in the user's home directory to avoid permission issues
         File tokenFolder = new File(System.getProperty("user.home"), ".drivesync_tokens");
         if (!tokenFolder.exists()) {
             tokenFolder.mkdirs();
         }
 
+        // Build the authorization flow for Google Drive API with offline access
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
             HTTP_TRANSPORT,
             JSON_FACTORY,
@@ -52,9 +57,11 @@ public class App {
             .setAccessType("offline")
             .build();
 
+        // Authorize the user and obtain credentials
         Credential credential = new AuthorizationCodeInstalledApp(
             flow, new LocalServerReceiver()).authorize("user");
 
+        // Build the Drive service client
         Drive driveService = new Drive.Builder(
                 HTTP_TRANSPORT,
                 JSON_FACTORY,
@@ -62,8 +69,10 @@ public class App {
                 .setApplicationName("DriveSync")
                 .build();
 
+        // Initialize the folder monitor for the local directory
         FolderMonitor folderMonitor = new FolderMonitor(localFolderPath);
 
+        // Initialize the GoogleDriveSync helper with the Drive service and target folder
         GoogleDriveSync googleDriveSync;
         try {
             googleDriveSync = new GoogleDriveSync(driveService, googleDriveFolderName);
@@ -72,10 +81,10 @@ public class App {
             return;
         }
 
-        // Initial sync before monitoring
+        // Perform an initial sync between the local and remote folders
         folderMonitor.initialSync(googleDriveSync);
 
-        // Start monitoring the folder
+        // Start monitoring the local folder for changes and sync with Google Drive
         folderMonitor.startMonitoring(googleDriveSync);
     }
 }
